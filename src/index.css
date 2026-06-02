@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
 
 :root {
   --tis-red: #D61F2F;
@@ -11,7 +11,7 @@
   --text-muted: #475569; /* Slate 600 */
   --text-dark: #0f172a;
   
-  --font-family: 'Plus Jakarta Sans', sans-serif;
+  --font-family: 'Roboto', sans-serif;
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --glow-red: 0 4px 20px rgba(214, 31, 47, 0.12);
   --radius-lg: 24px;
@@ -863,4 +863,3 @@ body {
     font-size: 0.72rem !important;
   }
 }
-

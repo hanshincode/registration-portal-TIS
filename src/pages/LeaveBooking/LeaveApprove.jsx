@@ -63,7 +63,7 @@ const LeaveApprove = () => {
     justifyContent: 'center',
     background: 'linear-gradient(135deg, #f0f2f5 0%, #e2e8f0 100%)',
     padding: '20px',
-    fontFamily: "'Plus Jakarta Sans', sans-serif"
+    fontFamily: "'Roboto', sans-serif"
   };
 
   return (
