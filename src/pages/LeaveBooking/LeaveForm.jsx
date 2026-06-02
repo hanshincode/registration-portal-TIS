@@ -498,16 +498,15 @@ const LeaveForm = ({ userData, userEmail, onLogout, onViewDashboard }) => {
             <thead>
               <tr>
                 <th>Ngày</th>
-                <th>Số ngày</th>
+                <th style={{ width: '86px' }}>Số ngày</th>
                 <th>Phân loại</th>
-                <th style={{ textAlign: 'right' }}>Trạng thái</th>
-                <th style={{ textAlign: 'right', width: '120px' }}>Thao tác</th>
+                <th style={{ textAlign: 'right', width: '120px' }}>Trạng thái</th>
               </tr>
             </thead>
             <tbody>
               {historyList.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     Chưa có lịch sử đăng ký nghỉ phép.
                   </td>
                 </tr>
@@ -525,27 +524,27 @@ const LeaveForm = ({ userData, userEmail, onLogout, onViewDashboard }) => {
                           {item.days} ngày
                         </span>
                       </td>
-                      <td style={{ fontSize: '0.85rem' }}>{item.type}</td>
+                      <td style={{ fontSize: '0.85rem', minWidth: '120px' }}>{item.type}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <span className={`premium-badge ${badgeClass}`} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                          <span className={`premium-badge ${badgeClass}`} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                            {item.status}
+                          </span>
                         {canCancelLeave(item) ? (
                           <button
                             type="button"
                             onClick={() => handleCancelLeave(item)}
                             className="btn-secondary"
-                            style={{ padding: '8px 12px', borderRadius: '10px', color: 'var(--tis-red)', fontSize: '0.78rem', fontWeight: 800 }}
+                            style={{ padding: '6px 10px', borderRadius: '10px', color: 'var(--tis-red)', fontSize: '0.72rem', fontWeight: 800, whiteSpace: 'nowrap' }}
                             title="Hủy lịch nghỉ phép"
                           >
                             <XCircle size={14} />
                             <span>Hủy lịch</span>
                           </button>
                         ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>-</span>
+                          null
                         )}
+                        </div>
                       </td>
                     </tr>
                   );
