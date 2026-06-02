@@ -48,11 +48,15 @@ const CarCalendar = () => {
       if (parts.length !== 3) return null;
       const isoStart = `${parts[2]}-${parts[1]}-${parts[0]}`;
       
-      const startObj = new Date(isoStart);
-      const endObj = new Date(isoStart);
+      const startStr = isoStart + 'T' + (item.startTime || '08:00');
+      const startObj = new Date(startStr);
       const duration = parseFloat(item.days) || 1;
-      endObj.setDate(startObj.getDate() + duration);
-      const isoEnd = endObj.toISOString().split('T')[0];
+      const overnights = Math.ceil(duration) - 1;
+      const lastDayUsage = (duration % 1 === 0) ? 9 : 4.5;
+      const endObj = new Date(startObj.getTime() + (overnights * 24 * 60 * 60 * 1000) + (lastDayUsage * 60 * 60 * 1000));
+      
+      const pad = (num) => String(num).padStart(2, '0');
+      const isoEnd = `${endObj.getFullYear()}-${pad(endObj.getMonth() + 1)}-${pad(endObj.getDate())}T${pad(endObj.getHours())}:${pad(endObj.getMinutes())}`;
 
       let color = '#64748b'; // Gray for Khác
       if (item.transport === 'Ô tô') color = '#D61F2F'; // TIS Red
@@ -63,7 +67,7 @@ const CarCalendar = () => {
       return {
         id: item.id.toString(),
         title: `${item.fullName} - ${vehicleInfo}`,
-        start: isoStart + 'T' + item.startTime,
+        start: startStr,
         end: isoEnd,
         borderColor: color,
         backgroundColor: color + '15', // 15% opacity background
