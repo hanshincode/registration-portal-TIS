@@ -9,6 +9,22 @@ import { Calendar, Trash2, Edit, X, Compass, User, Clock, ShieldAlert } from 'lu
 import { API_CONFIG, callGasApi } from '../../config';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import Swal from 'sweetalert2';
+const parseDurationToHours = (durationStr) => {
+  if (!durationStr) return 0.5;
+  const str = durationStr.toString().toLowerCase();
+  if (str === 'chưa tính' || str === 'rất gần') return 0.5;
+  
+  let hours = 0;
+  let minutes = 0;
+  
+  const hourMatch = str.match(/(\d+)\s*giờ/);
+  if (hourMatch) hours = parseInt(hourMatch[1], 10);
+  
+  const minMatch = str.match(/(\d+)\s*phút/);
+  if (minMatch) minutes = parseInt(minMatch[1], 10);
+  
+  return hours + (minutes / 60);
+};
 
 const CarCalendar = () => {
   const navigate = useNavigate();
@@ -18,6 +34,8 @@ const CarCalendar = () => {
   // Modal details state
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [tempNote, setTempNote] = useState('');
 
   useEffect(() => {
     loadCalendarData();
@@ -51,9 +69,17 @@ const CarCalendar = () => {
       const startStr = isoStart + 'T' + (item.startTime || '08:00');
       const startObj = new Date(startStr);
       const duration = parseFloat(item.days) || 1;
-      const overnights = Math.ceil(duration) - 1;
-      const lastDayUsage = (duration % 1 === 0) ? 9 : 4.5;
-      const endObj = new Date(startObj.getTime() + (overnights * 24 * 60 * 60 * 1000) + (lastDayUsage * 60 * 60 * 1000));
+      
+      let endObj;
+      if (duration <= 1) {
+        const transitHours = parseDurationToHours(item.duration || 'Chưa tính');
+        const roundTripHours = transitHours * 2;
+        endObj = new Date(startObj.getTime() + (roundTripHours * 60 * 60 * 1000));
+      } else {
+        const overnights = Math.ceil(duration) - 1;
+        const lastDayUsage = (duration % 1 === 0) ? 9 : 4.5;
+        endObj = new Date(startObj.getTime() + (overnights * 24 * 60 * 60 * 1000) + (lastDayUsage * 60 * 60 * 1000));
+      }
       
       const pad = (num) => String(num).padStart(2, '0');
       const isoEnd = `${endObj.getFullYear()}-${pad(endObj.getMonth() + 1)}-${pad(endObj.getDate())}T${pad(endObj.getHours())}:${pad(endObj.getMinutes())}`;
@@ -78,7 +104,10 @@ const CarCalendar = () => {
   };
 
   const handleEventClick = (info) => {
-    setSelectedEvent(info.event.extendedProps);
+    const tripData = info.event.extendedProps;
+    setSelectedEvent(tripData);
+    setTempNote(tripData.note || '');
+    setIsEditingNote(false);
     setShowModal(true);
   };
 
@@ -114,15 +143,35 @@ const CarCalendar = () => {
     }
   };
 
-  const editTrip = (data) => {
-    const result = window.confirm("Hệ thống sẽ chuyển sang trang Đăng ký để bạn sửa thông tin. Bấm OK để tiếp tục.");
-    if (!result) return;
-    
-    // Save state to localstorage for editing
-    data.oldId = data.id; // reference to delete after submission
-    localStorage.setItem('editTripData', JSON.stringify(data));
-    setShowModal(false);
-    navigate('/car');
+  const handleSaveNote = async () => {
+    setIsLoading(true);
+    try {
+      const res = await callGasApi(API_CONFIG.CAR_URL, {
+        action: 'UPDATE_NOTE',
+        id: selectedEvent.id,
+        note: tempNote
+      });
+      if (res.status === 'success') {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'Đã cập nhật ghi chú thành công!',
+          showConfirmButton: false,
+          timer: 2000
+        });
+        setIsEditingNote(false);
+        setSelectedEvent(prev => ({ ...prev, note: tempNote }));
+        loadCalendarData();
+      } else {
+        Swal.fire('Lỗi', res.message || 'Không thể cập nhật ghi chú!', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ!', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -253,7 +302,6 @@ const CarCalendar = () => {
                     </span>
                   </div>
                 </div>
-
                 {selectedEvent.transport === 'Ô tô' && (
                   <div style={{
                     backgroundColor: 'rgba(214, 31, 47, 0.04)', border: '1px solid rgba(214, 31, 47, 0.12)',
@@ -272,9 +320,63 @@ const CarCalendar = () => {
                     {selectedEvent.companions || 'Không có'}
                   </div>
                 </div>
+
+                <hr style={{ border: 0, borderTop: '1px solid rgba(15, 23, 42, 0.06)' }} />
+
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ghi chú chuyến đi</label>
+                  {isEditingNote ? (
+                    <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <textarea
+                        className="form-control"
+                        rows="2"
+                        value={tempNote}
+                        onChange={(e) => setTempNote(e.target.value)}
+                        style={{ width: '100%', borderRadius: '8px', padding: '8px', fontSize: '0.9rem', resize: 'vertical' }}
+                      />
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingNote(false)}
+                          className="btn-secondary"
+                          style={{ padding: '4px 10px', fontSize: '0.85rem', borderRadius: '20px' }}
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveNote}
+                          className="btn-primary"
+                          style={{ padding: '4px 12px', fontSize: '0.85rem', borderRadius: '20px', background: '#10b981', color: '#ffffff', border: 'none' }}
+                        >
+                          Lưu
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: '4px', gap: '8px' }}>
+                      <span style={{ fontStyle: selectedEvent.note ? 'normal' : 'italic', color: selectedEvent.note ? 'var(--text-main)' : 'var(--text-muted)', fontSize: '0.85rem', wordBreak: 'break-word', flex: 1 }}>
+                        {selectedEvent.note || 'Chưa có ghi chú'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempNote(selectedEvent.note || '');
+                          setIsEditingNote(true);
+                        }}
+                        style={{
+                          background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer',
+                          fontSize: '0.8rem', fontWeight: 'bold', padding: '2px 6px', flexShrink: 0
+                        }}
+                      >
+                        [Chỉnh sửa]
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-
+ 
             {/* Modal Footer */}
             <div style={{
               display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap',
@@ -293,34 +395,19 @@ const CarCalendar = () => {
               >
                 <Trash2 size={14} /> Hủy chuyến
               </button>
-
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  onClick={() => editTrip(selectedEvent)}
-                  className="btn-primary" 
-                  style={{
-                    padding: '10px 18px', fontSize: '0.85rem', borderRadius: '30px', fontWeight: '700',
-                    background: 'rgba(202, 138, 4, 0.08)', border: '1px solid rgba(202, 138, 4, 0.2)', color: '#b45309',
-                    boxShadow: 'none', transition: 'var(--transition-smooth)'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#d97706'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(202, 138, 4, 0.08)'; e.currentTarget.style.color = '#b45309'; }}
-                >
-                  <Edit size={14} /> Sửa lịch
-                </button>
-                <button 
-                  onClick={() => setShowModal(false)}
-                  className="btn-secondary" 
-                  style={{ 
-                    padding: '10px 18px', fontSize: '0.85rem', borderRadius: '30px', fontWeight: '700',
-                    background: '#0f172a', border: 'none', color: '#fff', transition: 'var(--transition-smooth)'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#1e293b'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = '#0f172a'; }}
-                >
-                  Đóng
-                </button>
-              </div>
+ 
+              <button 
+                onClick={() => setShowModal(false)}
+                className="btn-secondary" 
+                style={{ 
+                  padding: '10px 18px', fontSize: '0.85rem', borderRadius: '30px', fontWeight: '700',
+                  background: '#0f172a', border: 'none', color: '#fff', transition: 'var(--transition-smooth)'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#1e293b'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#0f172a'; }}
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>

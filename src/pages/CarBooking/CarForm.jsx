@@ -20,6 +20,7 @@ const CarForm = () => {
   const [days, setDays] = useState(1);
   const [destinations, setDestinations] = useState(['']);
   const [companions, setCompanions] = useState('');
+  const [note, setNote] = useState('');
   
   const [bookingType, setBookingType] = useState('self');
   const [behalfName, setBehalfName] = useState('');
@@ -32,7 +33,6 @@ const CarForm = () => {
   // Conflict checking status
   const [scheduleStatus, setScheduleStatus] = useState({ type: '', message: '' });
   const [isBlocked, setIsBlocked] = useState(false);
-  const [oldTripIdToDelete, setOldTripIdToDelete] = useState(null);
   
   // Success overlay state
   const [showSuccess, setShowSuccess] = useState(false);
@@ -245,92 +245,12 @@ const CarForm = () => {
   // Ref for timer
   const checkTimeout = useRef(null);
 
-  // Load editing data if available
+  // Load min date configuration
   useEffect(() => {
     // Set min date to 3 days ago (allowing past booking up to 3 days)
     const minDate = new Date();
     minDate.setDate(minDate.getDate() - 3);
-    let minDateStr = minDate.toISOString().split('T')[0];
-
-    const editDataJson = localStorage.getItem('editTripData');
-    if (editDataJson) {
-      try {
-        const data = JSON.parse(editDataJson);
-        console.log("Loading edit data:", data);
-
-        setOldTripIdToDelete(data.oldId || null);
-        const loadedName = data.fullName || '';
-        if (loadedName && loadedName !== userData.name) {
-          setBookingType('behalf');
-          setBehalfName(loadedName);
-        } else {
-          setBookingType('self');
-          setBehalfName('');
-        }
-        setFullName(loadedName);
-        setDepartment(data.dept || '');
-        
-        // Inline helper to convert format safely during mount
-        const getIsoDate = (dateStr) => {
-          if (!dateStr) return '';
-          const parts = dateStr.split('/');
-          if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-          }
-          return dateStr;
-        };
-
-        const editDateFormatted = getIsoDate(data.startDate);
-        setStartDate(editDateFormatted || '');
-        
-        // If edit date is older than 3 days ago, allow it so it doesn't get blocked
-        if (editDateFormatted && editDateFormatted < minDateStr) {
-          minDateStr = editDateFormatted;
-        }
-
-        setStartTime(data.startTime || '');
-        setDays(parseFloat(data.days) || 1);
-        setCompanions(data.companions || '');
-        setKm(data.km || 0);
-        setDuration(data.duration || 'Chưa tính');
-        setTransport(data.transport || '');
-
-        if (data.destination) {
-          const dests = data.destination.split(' -> ');
-          setDestinations(dests);
-          
-          // Render map on edit load
-          const origin = "71 Hoàng Văn Thái, Tân Phú, Quận 7, Thành phố Hồ Chí Minh";
-          const destinationsQuery = dests.map(d => encodeURIComponent(d.trim())).join('+to:');
-          const url = `https://maps.google.com/maps?saddr=${encodeURIComponent(origin)}&daddr=${destinationsQuery}&output=embed`;
-          setMapUrl(url);
-        }
-
-        if (data.transport === 'Ô tô') {
-          const standardOwners = ['Xe anh Phong', 'Xe anh Minh', 'Xe anh Tài'];
-          if (standardOwners.includes(data.carOwner)) {
-            setCarOwnerSelect(data.carOwner);
-          } else {
-            setCarOwnerSelect('Khác');
-            setCarOwnerInput(data.carOwner);
-          }
-        }
-
-        localStorage.removeItem('editTripData');
-        
-        Swal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'info',
-          title: `Đang sửa lịch trình của: ${data.fullName}`,
-          showConfirmButton: false,
-          timer: 3000
-        });
-
-      } catch (e) {
-        console.error("Error parsing edit data:", e);
-      }
-    }
+    const minDateStr = minDate.toISOString().split('T')[0];
 
     const dateInput = document.getElementById('startDate');
     if (dateInput) {
@@ -344,7 +264,7 @@ const CarForm = () => {
       clearTimeout(checkTimeout.current);
       checkTimeout.current = setTimeout(checkSchedule, 500);
     }
-  }, [startDate, startTime, days, transport, carOwnerSelect, carOwnerInput]);
+  }, [startDate, startTime, days, transport, carOwnerSelect, carOwnerInput, duration]);
 
   const convertDateFormat = (dateStr) => {
     if (!dateStr) return '';
@@ -374,7 +294,8 @@ const CarForm = () => {
       time: startTime,
       days: days.toString(),
       transport: transport,
-      carOwner: carVal
+      carOwner: carVal,
+      duration: duration
     });
 
     if (res.status === 'BLOCKED') {
@@ -487,18 +408,13 @@ const CarForm = () => {
       duration: duration,
       transport,
       carOwner: getCarOwnerValue(),
-      companions
+      companions,
+      note
     };
 
     const res = await callGasApi(API_CONFIG.CAR_URL, payload);
 
     if (res.status === 'success') {
-      // If we are editing, delete the old trip
-      if (oldTripIdToDelete) {
-        setLoadingText('Đang cập nhật thay đổi (xóa lịch cũ)...');
-        await callGasApi(API_CONFIG.CAR_URL, { action: 'CANCEL_TRIP', id: oldTripIdToDelete });
-      }
-      
       setIsLoading(false);
       setShowSuccess(true);
       
@@ -613,16 +529,7 @@ const CarForm = () => {
         {/* Left Column: Form */}
         <div className="glass-panel car-form-col" style={{ padding: '32px' }}>
         
-        {oldTripIdToDelete && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            backgroundColor: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.3)',
-            borderRadius: '12px', padding: '12px 16px', marginBottom: '24px', color: '#facc15'
-          }}>
-            <AlertTriangle size={20} />
-            <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Đang ở chế độ chỉnh sửa lịch trình</span>
-          </div>
-        )}
+
 
         <form onSubmit={handleSubmit}>
           {/* Section 1: Personal Info */}
@@ -1141,7 +1048,7 @@ const CarForm = () => {
           </div>
 
           {/* Section 6: Companions */}
-          <div style={{ marginBottom: '32px' }}>
+          <div style={{ marginBottom: '24px' }}>
             <label className="form-label"><Users size={14} style={{ marginRight: '4px' }} /> Đi công tác với ai (nếu có)</label>
             <input 
               type="text" 
@@ -1149,6 +1056,19 @@ const CarForm = () => {
               placeholder="Nhập tên những người cùng đi..." 
               value={companions}
               onChange={(e) => setCompanions(e.target.value)}
+            />
+          </div>
+
+          {/* Section 7: Note */}
+          <div style={{ marginBottom: '32px' }}>
+            <label className="form-label">📝 Ghi chú chuyến đi</label>
+            <textarea 
+              className="form-control" 
+              rows="3"
+              placeholder="Nhập ghi chú hoặc yêu cầu đặc biệt (tự do chỉnh sửa sau)..." 
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              style={{ resize: 'vertical', borderRadius: '12px', padding: '12px' }}
             />
           </div>
 
