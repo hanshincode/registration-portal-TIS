@@ -493,65 +493,64 @@ const LeaveForm = ({ userData, userEmail, onLogout, onViewDashboard }) => {
           <Clock size={18} /> Lịch sử đăng ký của bạn
         </h5>
 
-        <div className="premium-table-container glass-panel" style={{ padding: '4px' }}>
-          <table className="premium-table">
-            <thead>
-              <tr>
-                <th>Ngày</th>
-                <th style={{ width: '86px' }}>Số ngày</th>
-                <th>Phân loại</th>
-                <th style={{ textAlign: 'right', width: '120px' }}>Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historyList.length === 0 ? (
-                <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                    Chưa có lịch sử đăng ký nghỉ phép.
-                  </td>
-                </tr>
-              ) : (
-                historyList.map((item, idx) => {
-                  const badgeClass = 
-                    item.status === 'Đã duyệt' ? 'badge-green' :
-                    item.status === 'Chờ duyệt' ? 'badge-yellow' : 'badge-red';
+        <div className="glass-panel" style={{ padding: '10px', borderRadius: '18px' }}>
+          {historyList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+              Chưa có lịch sử đăng ký nghỉ phép.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {historyList.map((item, idx) => {
+                const badgeClass =
+                  item.status === 'Đã duyệt' ? 'badge-green' :
+                  item.status === 'Chờ duyệt' ? 'badge-yellow' : 'badge-red';
 
-                  return (
-                    <tr key={idx}>
-                      <td style={{ fontWeight: 700, color: 'var(--text-main)' }}>{item.start}</td>
-                      <td>
-                        <span className="premium-badge badge-gray" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
-                          {item.days} ngày
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '0.85rem', minWidth: '120px' }}>{item.type}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                          <span className={`premium-badge ${badgeClass}`} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-                            {item.status}
-                          </span>
-                        {canCancelLeave(item) ? (
-                          <button
-                            type="button"
-                            onClick={() => handleCancelLeave(item)}
-                            className="btn-secondary"
-                            style={{ padding: '6px 10px', borderRadius: '10px', color: 'var(--tis-red)', fontSize: '0.72rem', fontWeight: 800, whiteSpace: 'nowrap' }}
-                            title="Hủy lịch nghỉ phép"
-                          >
-                            <XCircle size={14} />
-                            <span>Hủy lịch</span>
-                          </button>
-                        ) : (
-                          null
-                        )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                return (
+                  <div
+                    key={item.id || idx}
+                    style={{
+                      background: 'rgba(255,255,255,0.72)',
+                      border: '1px solid rgba(15, 23, 42, 0.06)',
+                      borderRadius: '14px',
+                      padding: '14px 16px',
+                      boxShadow: '0 6px 16px rgba(15, 23, 42, 0.03)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                      <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem' }}>{item.start}</div>
+                      <span className={`premium-badge ${badgeClass}`} style={{ fontSize: '0.75rem', padding: '4px 10px', whiteSpace: 'nowrap' }}>
+                        {item.status}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 12px', alignItems: 'start' }}>
+                      <span className="premium-badge badge-gray" style={{ fontSize: '0.75rem', padding: '3px 8px', whiteSpace: 'nowrap' }}>
+                        {item.days} ngày
+                      </span>
+                      <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.45 }}>
+                        {item.type}
+                      </div>
+                    </div>
+
+                    {canCancelLeave(item) && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelLeave(item)}
+                          className="btn-secondary"
+                          style={{ padding: '7px 12px', borderRadius: '10px', color: 'var(--tis-red)', fontSize: '0.78rem', fontWeight: 800 }}
+                          title="Hủy lịch nghỉ phép"
+                        >
+                          <XCircle size={14} />
+                          <span>Hủy lịch</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
